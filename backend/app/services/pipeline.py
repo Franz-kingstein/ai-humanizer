@@ -106,59 +106,60 @@ class HumanizationPipeline:
         request_id = request_id or str(uuid.uuid4())[:8]
         start_time = time.time()
 
-        # Original analysis
-        original_analysis = self.analyzer.analyze(text)
-        naturalness_before = calculate_naturalness_score(original_analysis)
+        try:
+            # Original analysis
+            original_analysis = self.analyzer.analyze(text)
+            naturalness_before = calculate_naturalness_score(original_analysis)
 
-        # Humanize with retries
-        best_result = None
-        best_similarity = 0.0
-        all_warnings = []
+            # Humanize with retries
+            best_result = None
+            best_similarity = 0.0
+            all_warnings = []
 
-        for attempt in range(self.settings.max_rewrite_attempts + 1):
-            result = self.humanizer.humanize(text, style, strength)
+            for attempt in range(self.settings.max_rewrite_attempts + 1):
+                result = self.humanizer.humanize(text, style, strength)
 
-            # Content preservation
-            preservation = check_content_preservation(text, result.text)
+                # Content preservation
+                preservation = check_content_preservation(text, result.text)
 
-            # Semantic validation
-            similarity, is_valid, sem_warning = self.semantic_validator.validate(text, result.text)
+                # Semantic validation
+                similarity, is_valid, sem_warning = self.semantic_validator.validate(text, result.text)
 
-            attempt_warnings = preservation.warnings.copy()
-            if sem_warning:
-                attempt_warnings.append(Warning(type="semantic_similarity", message=sem_warning, severity="warning"))
+                attempt_warnings = preservation.warnings.copy()
+                if sem_warning:
+                    attempt_warnings.append(Warning(type="semantic_similarity", message=sem_warning, severity="warning"))
 
-            logger.info(f"Attempt {attempt + 1}: similarity={similarity:.3f}, valid={is_valid}")
+                logger.info(f"Attempt {attempt + 1}: similarity={similarity:.3f}, valid={is_valid}")
 
-            if similarity > best_similarity:
-                best_similarity = similarity
-                best_result = result
-                all_warnings = attempt_warnings
+                if similarity > best_similarity:
+                    best_similarity = similarity
+                    best_result = result
+                    all_warnings = attempt_warnings
 
-            if is_valid:
-                break
+                if is_valid:
+                    break
 
-        # Use best result
-        humanized_text = best_result.text
-        model_info = best_result.model_info
+            # Use best result
+            humanized_text = best_result.text
+            model_info = best_result.model_info
 
-        # Analyze humanized text
-        humanized_analysis = self.analyzer.analyze(humanized_text)
-        naturalness_after = calculate_naturalness_score(humanized_analysis)
+            # Analyze humanized text
+            humanized_analysis = self.analyzer.analyze(humanized_text)
+            naturalness_after = calculate_naturalness_score(humanized_analysis)
 
-        # Final content preservation check
-        final_preservation = check_content_preservation(text, humanized_text)
-        all_warnings.extend(final_preservation.warnings)
+            # Final content preservation check
+            final_preservation = check_content_preservation(text, humanized_text)
+            all_warnings.extend(final_preservation.warnings)
 
-        # Metric comparison
-        metric_comparison = self._compare_metrics(original_analysis, humanized_analysis)
+            # Metric comparison
+            metric_comparison = self._compare_metrics(original_analysis, humanized_analysis, naturalness_before, naturalness_after)
 
-        processing_time = (time.time() - start_time) * 1000
+            processing_time = (time.time() - start_time) * 1000
 
-        return CompareResponse(
+            return CompareResponse(
             request_id=request_id,
-            original_analysis=original_analysis,
-            humanized_analysis=humanized_analysis,
+            original_analysis=original_analysis.to_dict(),
+            humanized_analysis=humanized_analysis.to_dict(),
             humanized_text=humanized_text,
             semantic_similarity=best_similarity,
             naturalness_score_before=NaturalnessScoreSchema(
@@ -178,8 +179,11 @@ class HumanizationPipeline:
             processing_time_ms=processing_time,
             model_info=model_info,
         )
+        except Exception as e:
+            logger.error(f"Error in compare pipeline: {e}", exc_info=True)
+            raise
 
-    def _compare_metrics(self, before: AnalysisResult, after: AnalysisResult) -> dict:
+    def _compare_metrics(self, before: AnalysisResult, after: AnalysisResult, naturalness_before: NaturalnessScore, naturalness_after: NaturalnessScore) -> dict:
         """Compare metrics before and after."""
         return {
             "basic_stats": {

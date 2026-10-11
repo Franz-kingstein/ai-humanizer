@@ -75,14 +75,14 @@ class ConjunctionIndicators(BaseModel):
 
 
 class SyntaxFeatures(BaseModel):
-    dependency_distribution: Dict[str, float]
-    nsubj_count: int
-    dobj_count: int
-    prep_count: int
-    advcl_count: int
-    relcl_count: int
-    ccomp_count: int
-    xcomp_count: int
+    dependency_distribution: Dict[str, float] = {}
+    nsubj_count: int = 0
+    dobj_count: int = 0
+    prep_count: int = 0
+    advcl_count: int = 0
+    relcl_count: int = 0
+    ccomp_count: int = 0
+    xcomp_count: int = 0
 
 
 class NGramRepetition(BaseModel):

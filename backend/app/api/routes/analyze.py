@@ -57,7 +57,7 @@ async def analyze_text(request: Request, body: AnalyzeRequest):
 
         return AnalyzeResponse(
             request_id=request_id,
-            analysis=analysis,
+            analysis=analysis.to_dict(),
             naturalness_score=NaturalnessScore(
                 score=naturalness.score,
                 components=naturalness.components,
