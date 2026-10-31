@@ -1,3 +1,4 @@
+import re
 import textstat
 from dataclasses import dataclass
 from typing import Optional
@@ -30,6 +31,19 @@ class ReadabilityMetrics:
         }
 
 
+def _safe(fn, text):
+    """Evaluate one textstat metric, returning None on failure.
+
+    textstat raises KeyError for tokens it cannot look up (e.g. '947' from
+    '94.7%'). Each metric is evaluated independently so one unsupported
+    token cannot nullify every readability score.
+    """
+    try:
+        return round(float(fn(text)), 2)
+    except Exception:
+        return None
+
+
 def calculate_readability(text: str) -> ReadabilityMetrics:
     """Calculate comprehensive readability metrics."""
     if not text or not text.strip():
@@ -45,44 +59,51 @@ def calculate_readability(text: str) -> ReadabilityMetrics:
             dale_chall_readability_score=None,
         )
 
-    try:
-        return ReadabilityMetrics(
-            flesch_reading_ease=round(textstat.flesch_reading_ease(text), 2),
-            flesch_kincaid_grade=round(textstat.flesch_kincaid_grade(text), 2),
-            gunning_fog=round(textstat.gunning_fog(text), 2),
-            smog_index=round(textstat.smog_index(text), 2),
-            automated_readability_index=round(textstat.automated_readability_index(text), 2),
-            coleman_liau_index=round(textstat.coleman_liau_index(text), 2),
-            lix=round(textstat.lix(text), 2),
-            rix=round(textstat.rix(text), 2),
-            dale_chall_readability_score=round(textstat.dale_chall_readability_score(text), 2),
+    # First try the text as-is.
+    metrics = ReadabilityMetrics(
+        flesch_reading_ease=_safe(textstat.flesch_reading_ease, text),
+        flesch_kincaid_grade=_safe(textstat.flesch_kincaid_grade, text),
+        gunning_fog=_safe(textstat.gunning_fog, text),
+        smog_index=_safe(textstat.smog_index, text),
+        automated_readability_index=_safe(textstat.automated_readability_index, text),
+        coleman_liau_index=_safe(textstat.coleman_liau_index, text),
+        lix=_safe(textstat.lix, text),
+        rix=_safe(textstat.rix, text),
+        dale_chall_readability_score=_safe(textstat.dale_chall_readability_score, text),
+    )
+
+    # Syllable-based formulas (Flesch, FK, Fog, SMOG, Dale-Chall) fail when a
+    # token is missing from the CMU pronouncing dictionary. That happens for
+    # numbers ('94.7%' -> '947'), URLs and bare domains ('example.com' ->
+    # 'examplecom') and hyphenated compounds ('fast-changing' ->
+    # 'fastchanging'). Neutralize those constructs *whole* before handing the
+    # text over, because replacing their fragments only creates new unknown
+    # tokens such as 'twotwo'.
+    if metrics.flesch_reading_ease is None:
+        fallback_text = re.sub(r"https?://\S+|www\.\S+|[\w-]+(?:\.[\w-]+)+", "two", text)
+        fallback_text = re.sub(r"\d[\d,./]*%?", "two", fallback_text)
+        fallback_text = re.sub(r"(?<=[A-Za-z])-(?=[A-Za-z])", " ", fallback_text)
+
+        def _clean(m: "re.Match") -> str:
+            token = m.group(0)
+            return token if token.replace("'", "").isalpha() else "two"
+
+        fallback_text = re.sub(r"\S+", _clean, fallback_text)
+        metrics = ReadabilityMetrics(
+            flesch_reading_ease=_safe(textstat.flesch_reading_ease, fallback_text),
+            flesch_kincaid_grade=_safe(textstat.flesch_kincaid_grade, fallback_text),
+            gunning_fog=_safe(textstat.gunning_fog, fallback_text),
+            smog_index=_safe(textstat.smog_index, fallback_text),
+            automated_readability_index=metrics.automated_readability_index,
+            coleman_liau_index=metrics.coleman_liau_index,
+            lix=metrics.lix,
+            rix=metrics.rix,
+            dale_chall_readability_score=_safe(
+                textstat.dale_chall_readability_score, fallback_text
+            ),
         )
-    except Exception:
-        # Fallback to basic metrics if textstat fails
-        try:
-            return ReadabilityMetrics(
-                flesch_reading_ease=round(textstat.flesch_reading_ease(text), 2),
-                flesch_kincaid_grade=round(textstat.flesch_kincaid_grade(text), 2),
-                gunning_fog=None,
-                smog_index=None,
-                automated_readability_index=None,
-                coleman_liau_index=None,
-                lix=None,
-                rix=None,
-                dale_chall_readability_score=None,
-            )
-        except Exception:
-            return ReadabilityMetrics(
-                flesch_reading_ease=None,
-                flesch_kincaid_grade=None,
-                gunning_fog=None,
-                smog_index=None,
-                automated_readability_index=None,
-                coleman_liau_index=None,
-                lix=None,
-                rix=None,
-                dale_chall_readability_score=None,
-            )
+
+    return metrics
 
 
 def get_readability_interpretation(flesch_score: Optional[float]) -> str:

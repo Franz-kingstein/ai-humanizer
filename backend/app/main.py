@@ -43,12 +43,14 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Could not load semantic model: {e}")
 
-    # Pre-load humanizer model if transformers
+    # Pre-load humanizer model if transformers.
+    # Use the pipeline singleton so the SAME instance is reused by requests;
+    # creating a separate humanizer here would load the weights twice.
     if settings.model_provider == "transformers":
         try:
-            from app.services.humanizer import get_humanizer
-            humanizer = get_humanizer()
-            humanizer.load_model()
+            from app.services.pipeline import get_pipeline
+            pipeline = get_pipeline()
+            pipeline.humanizer.load_model()
             logger.info("Humanizer model loaded")
         except Exception as e:
             logger.warning(f"Could not load humanizer model: {e}")

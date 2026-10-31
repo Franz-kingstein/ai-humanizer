@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     humanizer_top_p: float = 0.9
     humanizer_repetition_penalty: float = 1.1
     humanizer_quantization: str = "4bit"
+    # Model dtype: auto, float32, float16, bfloat16.
+    # "auto" = float16 on CUDA, bfloat16 on CPU (roughly halves CPU RAM).
+    humanizer_torch_dtype: str = "auto"
 
     # Semantic Validation
     semantic_model_name: str = "sentence-transformers/all-MiniLM-L6-v2"
@@ -54,7 +57,7 @@ class Settings(BaseSettings):
     weight_semantic_coherence: float = 0.10
 
     # CORS
-    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000"
+    cors_origins: str = "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://127.0.0.1:3001"
 
     # Request ID
     request_id_header: str = "X-Request-ID"

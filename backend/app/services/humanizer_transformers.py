@@ -45,6 +45,42 @@ class TransformersHumanizer(Humanizer):
             return BitsAndBytesConfig(load_in_8bit=True)
         return None
 
+    def _resolve_torch_dtype(self):
+        """Resolve model dtype from settings.
+
+        "auto" picks float16 on CUDA and bfloat16 on CPU. bfloat16 keeps the
+        same exponent range as float32, so it is numerically safe for LLM
+        inference while halving the model's resident memory.
+        """
+        requested = (self.settings.humanizer_torch_dtype or "auto").lower()
+
+        if requested == "auto":
+            requested = "float16" if self._device == "cuda" else "bfloat16"
+
+        dtype_map = {
+            "float32": torch.float32,
+            "fp32": torch.float32,
+            "float16": torch.float16,
+            "fp16": torch.float16,
+            "bfloat16": torch.bfloat16,
+            "bf16": torch.bfloat16,
+        }
+        dtype = dtype_map.get(requested)
+        if dtype is None:
+            logger.warning(f"Unknown torch dtype '{requested}', using float32")
+            return torch.float32
+
+        if dtype == torch.bfloat16 and self._device == "cpu":
+            try:
+                # Verify the CPU can actually run bfloat16 ops before loading.
+                torch.zeros(1, dtype=torch.bfloat16).sum()
+            except Exception as e:
+                logger.warning(f"bfloat16 unsupported on this CPU ({e}); using float32")
+                return torch.float32
+
+        logger.info(f"Model dtype: {requested} on {self._device}")
+        return dtype
+
     def load_model(self):
         """Load model and tokenizer."""
         if self._loaded:
@@ -66,12 +102,19 @@ class TransformersHumanizer(Humanizer):
         model_kwargs = {
             "revision": self.settings.humanizer_model_revision,
             "trust_remote_code": True,
-            "torch_dtype": torch.float16 if self._device == "cuda" else torch.float32,
+            "torch_dtype": self._resolve_torch_dtype(),
         }
 
         if quantization_config:
             model_kwargs["quantization_config"] = quantization_config
-            model_kwargs["device_map"] = "auto"
+            # Only use device_map="auto" for CUDA; for CPU, disable quantization or use device_map="cpu"
+            if self._device == "cuda":
+                model_kwargs["device_map"] = "auto"
+            else:
+                # For CPU, don't use quantization with device_map
+                model_kwargs["device_map"] = "cpu"
+                model_kwargs.pop("quantization_config", None)
+                logger.info("Quantization disabled for CPU device")
         else:
             model_kwargs["device_map"] = self._device
 
@@ -125,12 +168,15 @@ class TransformersHumanizer(Humanizer):
 
         start_time = time.time()
 
+        # Get actual model device (handles device_map="auto" case)
+        model_device = next(self.model.parameters()).device
+
         # Build prompt
         prompt = build_humanization_prompt(text, style, strength)
 
         # Tokenize
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=4096)
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
+        inputs = {k: v.to(model_device) for k, v in inputs.items()}
 
         # Get strength params
         from app.services.humanizer import get_strength_params

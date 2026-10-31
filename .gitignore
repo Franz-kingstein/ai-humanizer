@@ -60,3 +60,5 @@ results/*
 tmp/
 temp/
 *.tmp
+# Office lock files
+.~lock.*

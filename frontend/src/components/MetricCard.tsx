@@ -1,6 +1,7 @@
 "use client"
 
-import { cn, formatNumber, formatPercent, formatRatio, getScoreColor, getScoreBg, getChangeColor } from "@/lib/utils"
+import { cn } from "@/lib/utils"
+import { MetricChangeIcon } from "./icons"
 
 interface MetricCardProps {
   label: string
@@ -13,10 +14,28 @@ interface MetricCardProps {
 }
 
 const formatters = {
-  number: (v: number, d: number) => formatNumber(v, d),
-  percent: (v: number, d: number) => formatPercent(v, d),
-  ratio: (v: number, d: number) => formatRatio(v, d),
+  number: (v: number, d: number) => v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }),
+  percent: (v: number, d: number) => `${v.toFixed(d)}%`,
+  ratio: (v: number, d: number) => v.toFixed(d),
   score: (v: number) => v.toFixed(1),
+}
+
+function formatChange(change: number): string {
+  const sign = change > 0 ? "+" : ""
+  return `${sign}${change.toFixed(2)}`
+}
+
+function getScoreColor(score: number): string {
+  if (score >= 80) return "text-emerald-600 dark:text-emerald-400"
+  if (score >= 60) return "text-amber-600 dark:text-amber-400"
+  if (score >= 40) return "text-orange-600 dark:text-orange-400"
+  return "text-rose-600 dark:text-rose-400"
+}
+
+function getChangeColor(change: number): string {
+  if (change > 0) return "text-emerald-600 dark:text-emerald-400"
+  if (change < 0) return "text-rose-600 dark:text-rose-400"
+  return "text-storm-400"
 }
 
 export function MetricCard({
@@ -37,21 +56,18 @@ export function MetricCard({
   return (
     <div
       className={cn(
-        "p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700",
-        "transition-all duration-200 hover:border-gray-300 dark:hover:border-gray-600",
+        "metric-card",
         className
       )}
-      title={tooltip}
+      data-tooltip={tooltip}
     >
-      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-1">
-        {label}
-      </div>
+      <div className="metric-label">{label}</div>
       <div className="flex items-baseline gap-2">
         <span
           className={cn(
-            "text-2xl font-mono font-semibold",
+            "metric-value",
             format === "score" && getScoreColor(value || 0),
-            format !== "score" && "text-gray-900 dark:text-gray-100"
+            format !== "score" && "text-storm-900",
           )}
         >
           {formatted}
@@ -59,7 +75,7 @@ export function MetricCard({
         {showChange && (
           <span
             className={cn(
-              "text-sm font-medium",
+              "metric-change",
               getChangeColor(change)
             )}
           >
@@ -68,7 +84,7 @@ export function MetricCard({
         )}
       </div>
       {format === "score" && value !== null && value !== undefined && (
-        <div className="mt-2 h-2 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700">
+        <div className="mt-2 h-1.5 rounded-full overflow-hidden bg-storm-100">
           <div
             className="h-full rounded-full transition-all duration-500"
             style={{
@@ -80,9 +96,4 @@ export function MetricCard({
       )}
     </div>
   )
-}
-
-function formatChange(change: number): string {
-  const sign = change > 0 ? "+" : ""
-  return `${sign}${change.toFixed(2)}`
 }

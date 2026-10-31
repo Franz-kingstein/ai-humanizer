@@ -7,14 +7,26 @@ import { AnalysisDisplay } from "@/components/AnalysisDisplay"
 import { MetricCard } from "@/components/MetricCard"
 import { cn } from "@/lib/utils"
 import type { HumanizationStyle, HumanizationStrength, AnalyzeResponse, HumanizeResponse, CompareResponse, HealthResponse } from "@/lib/types"
-import { Loader2, Sparkles, Brain, AlertTriangle, CheckCircle, XCircle, Zap, FileText, BarChart2 } from "lucide-react"
+import {
+  BrainIcon,
+  SparklesIcon,
+  BarChartIcon,
+  ZapIcon,
+  FileTextIcon,
+  LoaderIcon,
+  CopyIcon,
+  AlertCircleIcon,
+  CheckCircleIcon,
+  InfoIcon,
+  SettingsIcon,
+} from "@/components/icons"
 
-const STYLES: { value: HumanizationStyle; label: string; icon: React.ReactNode }[] = [
-  { value: "natural", label: "Natural", icon: <Sparkles className="w-4 h-4" /> },
-  { value: "academic", label: "Academic", icon: <FileText className="w-4 h-4" /> },
-  { value: "professional", label: "Professional", icon: <Zap className="w-4 h-4" /> },
-  { value: "casual", label: "Casual", icon: <Brain className="w-4 h-4" /> },
-  { value: "technical", label: "Technical", icon: <BarChart2 className="w-4 h-4" /> },
+const STYLES: { value: HumanizationStyle; label: string; Icon: React.ComponentType<{ size?: number; className?: string }> }[] = [
+  { value: "natural", label: "Natural", Icon: SparklesIcon },
+  { value: "academic", label: "Academic", Icon: FileTextIcon },
+  { value: "professional", label: "Professional", Icon: ZapIcon },
+  { value: "casual", label: "Casual", Icon: BrainIcon },
+  { value: "technical", label: "Technical", Icon: SettingsIcon },
 ]
 
 const STRENGTHS: { value: HumanizationStrength; label: string; description: string }[] = [
@@ -28,8 +40,8 @@ export default function HomePage() {
   const [humanizedText, setHumanizedText] = useState("")
   const [style, setStyle] = useState<HumanizationStyle>("natural")
   const [strength, setStrength] = useState<HumanizationStrength>("medium")
-  const [mode, setMode] = useState<"analyze" | "humanize" | "compare">("compare")
-  const [loading, setLoading] = useState(false)
+  const [mode, setMode] = useState<"analyze" | "humanize" | "compare">("analyze")
+  const [loading, setLoading] = useState<"analyze" | "humanize" | "compare" | false>(false)
   const [analyzeResult, setAnalyzeResult] = useState<AnalyzeResponse | null>(null)
   const [humanizeResult, setHumanizeResult] = useState<HumanizeResponse | null>(null)
   const [compareResult, setCompareResult] = useState<CompareResponse | null>(null)
@@ -47,7 +59,7 @@ export default function HomePage() {
 
   const handleAnalyze = async () => {
     if (!originalText.trim()) return
-    setLoading(true)
+    setLoading("analyze")
     setError(null)
     try {
       const res = await api.analyze(originalText)
@@ -62,7 +74,7 @@ export default function HomePage() {
 
   const handleHumanize = async () => {
     if (!originalText.trim()) return
-    setLoading(true)
+    setLoading("humanize")
     setError(null)
     try {
       const res = await api.humanize(originalText, style, strength)
@@ -78,12 +90,15 @@ export default function HomePage() {
 
   const handleCompare = async () => {
     if (!originalText.trim()) return
-    setLoading(true)
+    if (!humanizedText.trim()) {
+      setError("Please humanize the text first before comparing")
+      return
+    }
+    setLoading("compare")
     setError(null)
     try {
       const res = await api.compare(originalText, style, strength)
       setCompareResult(res)
-      setHumanizedText(res.humanized_text)
       setMode("compare")
     } catch (e: any) {
       setError(e.response?.data?.detail || "Comparison failed")
@@ -101,6 +116,18 @@ export default function HomePage() {
     setError(null)
   }
 
+  // Transform analysis data to match frontend expected keys
+  const transformAnalysis = (analysis: any) => {
+    if (!analysis) return analysis
+    return {
+      ...analysis,
+      lexical_metrics: {
+        ...analysis.lexical_metrics,
+        repeated_words: analysis.lexical_metrics?.most_repeated_words?.length || 0,
+      },
+    }
+  }
+
   const comparisonData = compareResult ? {
     "Word Count": { before: compareResult.original_analysis.basic_stats.word_count, after: compareResult.humanized_analysis.basic_stats.word_count },
     "Sentence Count": { before: compareResult.original_analysis.basic_stats.sentence_count, after: compareResult.humanized_analysis.basic_stats.sentence_count },
@@ -114,31 +141,31 @@ export default function HomePage() {
   } : undefined
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
-      <header className="border-b border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-linen-100 dark:bg-storm-950">
+      <header className="border-b border-storm-200 dark:border-storm-800 bg-white/80 dark:bg-storm-950/80 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-3.5">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <Sparkles className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-2 bg-storm-100 dark:bg-storm-800 rounded-lg">
+                <BrainIcon className="w-5 h-5 text-storm-700 dark:text-storm-200" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">AI Humanizer</h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400">NLP Naturalization & Writing-Pattern Analysis</p>
+                <h1 className="text-xl font-semibold text-storm-900 dark:text-storm-100 tracking-tight">AI Humanizer</h1>
+                <p className="text-xs text-storm-500 dark:text-storm-400">NLP Naturalization & Writing-Pattern Analysis</p>
               </div>
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               {health && (
                 <div className={cn(
-                  "flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium",
+                  "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium",
                   health.model_loaded
-                    ? "bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300"
-                    : "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300"
+                    ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                    : "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300"
                 )}>
-                  <span className={cn("w-2 h-2 rounded-full", health.model_loaded ? "bg-green-500" : "bg-yellow-500")} />
+                  <span className={cn("w-1.5 h-1.5 rounded-full", health.model_loaded ? "bg-emerald-500" : "bg-amber-500")} />
                   {health.model_loaded ? "Model Ready" : "Loading..."}
                   {health.gpu_available && health.gpu_memory_used_mb && (
-                    <span className="text-gray-500 dark:text-gray-400 ml-2">
+                    <span className="text-storm-400 dark:text-storm-500 ml-2">
                       GPU: {health.gpu_memory_used_mb}MB / {health.gpu_memory_total_mb}MB
                     </span>
                   )}
@@ -151,121 +178,133 @@ export default function HomePage() {
 
       <main className="max-w-7xl mx-auto px-4 py-6">
         {error && (
-          <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center justify-between">
+          <div className="mb-6 p-4 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 rounded-lg flex items-center justify-between animate-fade-in" role="alert">
             <div className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
-              <span className="text-red-700 dark:text-red-300">{error}</span>
+              <AlertCircleIcon className="w-5 h-5 text-rose-600 dark:text-rose-400" />
+              <span className="text-rose-700 dark:text-rose-300">{error}</span>
             </div>
-            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">×</button>
+            <button onClick={() => setError(null)} className="p-1 text-rose-500 hover:text-rose-700 dark:hover:text-rose-300 rounded-md transition-colors">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-6">
           <div className="space-y-6">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 shadow-sm">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Original Text</h2>
-              <TextEditor
-                label="Original Text"
-                value={originalText}
-                onChange={setOriginalText}
-                placeholder="Paste your text here to analyze or humanize..."
-                showStats={true}
-              />
+            <div className="card">
+              <div className="card-header">
+                <h2 className="card-title">Original Text</h2>
+              </div>
+              <div className="card-body p-0">
+                <TextEditor
+                  label="Original Text"
+                  value={originalText}
+                  onChange={setOriginalText}
+                  placeholder="Paste your text here to analyze or humanize..."
+                  showStats={true}
+                />
+              </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Style:</label>
-                  <select
-                    value={style}
-                    onChange={(e) => setStyle(e.target.value as HumanizationStyle)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {STYLES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
+              <div className="card-header bg-storm-50 dark:bg-storm-900/30">
+                <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-storm-700 dark:text-storm-200">Style:</label>
+                    <select
+                      value={style}
+                      onChange={(e) => setStyle(e.target.value as HumanizationStyle)}
+                      className="input select min-w-[140px]"
+                    >
+                      {STYLES.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="flex items-center gap-2">
-                  <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Strength:</label>
-                  <select
-                    value={strength}
-                    onChange={(e) => setStrength(e.target.value as HumanizationStrength)}
-                    className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    {STRENGTHS.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-medium text-storm-700 dark:text-storm-200">Strength:</label>
+                    <select
+                      value={strength}
+                      onChange={(e) => setStrength(e.target.value as HumanizationStrength)}
+                      className="input select min-w-[140px]"
+                    >
+                      {STRENGTHS.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <button
-                  onClick={handleAnalyze}
-                  disabled={loading || !originalText.trim()}
-                  className={cn(
-                    "px-6 py-2.5 rounded-lg font-medium text-sm transition-all",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    loading || !originalText.trim()
-                      ? "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed"
-                      : "bg-blue-600 text-white hover:bg-blue-700 focus:ring-blue-500"
-                  )}
-                >
-                  {loading ? (
-                    <> <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing... </> ) : (
-                    <> <Brain className="w-4 h-4 mr-2" /> Analyze </> )}
-                </button>
+              <div className="card-header bg-storm-50 dark:bg-storm-900/30 pt-0">
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleAnalyze}
+                    disabled={loading === "analyze" || !originalText.trim()}
+                    className={cn(
+                      "btn btn-primary",
+                      loading === "analyze" || !originalText.trim()
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    )}
+                  >
+                    {loading === "analyze" ? (
+                      <> <LoaderIcon size={16} className="animate-spin" /> Analyzing... </> ) : (
+                      <> <BrainIcon size={16} /> Analyze </> )}
+                  </button>
 
-                <button
-                  onClick={handleHumanize}
-                  disabled={loading || !originalText.trim()}
-                  className={cn(
-                    "px-6 py-2.5 rounded-lg font-medium text-sm transition-all",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    loading || !originalText.trim()
-                      ? "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed"
-                      : "bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500"
-                  )}
-                >
-                  {loading ? (
-                    <> <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing... </> ) : (
-                    <> <Sparkles className="w-4 h-4 mr-2" /> Humanize </> )}
-                </button>
+                  <button
+                    onClick={handleHumanize}
+                    disabled={loading === "humanize" || !originalText.trim()}
+                    className={cn(
+                      "btn btn-secondary",
+                      loading === "humanize" || !originalText.trim()
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    )}
+                  >
+                    {loading === "humanize" ? (
+                      <> <LoaderIcon size={16} className="animate-spin" /> Humanizing... </> ) : (
+                      <> <SparklesIcon size={16} /> Humanize </> )}
+                  </button>
 
-                <button
-                  onClick={handleCompare}
-                  disabled={loading || !originalText.trim()}
-                  className={cn(
-                    "px-6 py-2.5 rounded-lg font-medium text-sm transition-all",
-                    "focus:outline-none focus:ring-2 focus:ring-offset-2",
-                    loading || !originalText.trim()
-                      ? "bg-gray-300 dark:bg-gray-600 text-gray-500 cursor-not-allowed"
-                      : "bg-green-600 text-white hover:bg-green-700 focus:ring-green-500"
-                  )}
-                >
-                  {loading ? (
-                    <> <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Processing... </> ) : (
-                    <> <BarChart2 className="w-4 h-4 mr-2" /> Compare </> )}
-                </button>
+                  <button
+                    onClick={handleCompare}
+                    disabled={loading === "compare" || !originalText.trim() || !humanizedText.trim()}
+                    className={cn(
+                      "btn btn-accent",
+                      loading === "compare" || !originalText.trim() || !humanizedText.trim()
+                        ? "opacity-50 cursor-not-allowed"
+                        : ""
+                    )}
+                    title={!humanizedText.trim() ? "Humanize text first before comparing" : undefined}
+                  >
+                    {loading === "compare" ? (
+                      <> <LoaderIcon size={16} className="animate-spin" /> Comparing... </> ) : (
+                      <> <BarChartIcon size={16} /> Compare </> )}
+                  </button>
 
-                <button
-                  onClick={handleClear}
-                  className="px-4 py-2.5 rounded-lg font-medium text-sm text-gray-600 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Clear
-                </button>
+                  <button
+                    onClick={handleClear}
+                    className="btn btn-ghost"
+                  >
+                    Clear
+                  </button>
+                </div>
               </div>
 
               {humanizedText && (
-                <div className="mt-6 p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-sm font-semibold text-green-700 dark:text-green-300">Humanized Output</h3>
+                <div className="card-header bg-emerald-50 dark:bg-emerald-900/20 border-t border-emerald-200 dark:border-emerald-800 pt-0">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Humanized Output</h3>
                     <button
                       onClick={() => navigator.clipboard.writeText(humanizedText)}
-                      className="text-xs text-green-600 dark:text-green-400 hover:underline"
+                      className="p-1.5 text-emerald-600 hover:text-emerald-700 dark:hover:text-emerald-300 transition-colors rounded-md"
+                      aria-label="Copy to clipboard"
                     >
-                      Copy
+                      <CopyIcon size={16} />
                     </button>
                   </div>
                   <TextEditor
@@ -283,7 +322,7 @@ export default function HomePage() {
           <div className="space-y-6">
             {mode === "analyze" && analyzeResult && (
               <AnalysisDisplay
-                analysis={analyzeResult.analysis}
+                analysis={transformAnalysis(analyzeResult.analysis)}
                 naturalness={analyzeResult.naturalness_score || undefined}
                 warnings={analyzeResult.warnings}
                 title="Analysis Results"
@@ -291,45 +330,76 @@ export default function HomePage() {
             )}
 
             {mode === "humanize" && humanizeResult && (
-              <AnalysisDisplay
-                analysis={{
-                  ...humanizeResult,
-                  analysis: humanizeResult as any,
-                } as any}
-                warnings={humanizeResult.content_preservation_warnings}
-                title="Humanization Result"
-              />
+              <div className="space-y-4 animate-fade-in">
+                <div className="card">
+                  <div className="card-header bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800">
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+                      <h3 className="text-emerald-700 dark:text-emerald-300 font-medium">Humanization Complete</h3>
+                    </div>
+                  </div>
+                  <div className="card-body">
+                    <p className="text-sm text-storm-600 dark:text-storm-400 mb-3">
+                      Humanization complete. The text has been rewritten with the selected style and strength.
+                      Click <strong className="text-accent-600 dark:text-accent-400">"Compare"</strong> to see detailed before/after metrics.
+                    </p>
+                    {humanizeResult.semantic_similarity !== null && (
+                      <div className="flex items-center gap-3 p-3 bg-storm-50 dark:bg-storm-900/30 rounded-lg">
+                        <InfoIcon className="w-5 h-5 text-storm-500" />
+                        <div>
+                          <span className="text-sm font-medium text-storm-700 dark:text-storm-200">Semantic Similarity: </span>
+                          <span className="font-mono text-lg font-semibold text-accent-600 dark:text-accent-400">
+                            {(humanizeResult.semantic_similarity * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {humanizeResult.content_preservation_warnings.length > 0 && (
+                      <div className="space-y-2 mt-3">
+                        {humanizeResult.content_preservation_warnings.map((w, i) => (
+                          <div key={i} className="p-3 text-sm bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-amber-700 dark:text-amber-300 flex items-start gap-2">
+                            <AlertCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                            <span>{w.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
 
             {mode === "compare" && compareResult && (
               <AnalysisDisplay
-                analysis={compareResult.humanized_analysis}
+                analysis={transformAnalysis(compareResult.humanized_analysis)}
                 naturalness={compareResult.naturalness_score_after}
                 warnings={compareResult.content_preservation_warnings}
-                title="Comparison: Humanized Text"
+                title="Comparison: Original vs Humanized"
                 comparisonData={comparisonData}
               />
             )}
 
             {!analyzeResult && !humanizeResult && !compareResult && (
-              <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center">
-                <Brain className="w-16 h-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">Ready to Analyze</h3>
-                <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                  Paste text in the editor and click <strong>Analyze</strong>, <strong>Humanize</strong>, or <strong>Compare</strong> to see detailed linguistic metrics and naturalness scores.
+              <div className="card text-center py-12">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-storm-100 dark:bg-storm-800 flex items-center justify-center">
+                  <BrainIcon className="w-8 h-8 text-storm-500 dark:text-storm-400" />
+                </div>
+                <h3 className="text-lg font-semibold text-storm-900 dark:text-storm-100 mb-2">Ready to Analyze</h3>
+                <p className="text-storm-500 dark:text-storm-400 max-w-md mx-auto mb-6">
+                  Paste text in the editor and click <strong className="text-storm-700 dark:text-storm-300">Analyze</strong>, <strong className="text-storm-700 dark:text-storm-300">Humanize</strong>, or <strong className="text-storm-700 dark:text-storm-300">Compare</strong> to see detailed linguistic metrics and naturalness scores.
                 </p>
-                <div className="mt-6 grid grid-cols-3 gap-4 text-center">
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">30+</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Linguistic Metrics</div>
+                <div className="grid grid-cols-3 gap-4 max-w-md mx-auto">
+                  <div className="p-4 bg-storm-50 dark:bg-storm-900/30 rounded-lg">
+                    <div className="text-2xl font-bold text-storm-700 dark:text-storm-300">30+</div>
+                    <div className="text-xs text-storm-500 dark:text-storm-400">Linguistic Metrics</div>
                   </div>
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <div className="text-2xl font-bold text-purple-600 dark:text-purple-400">5</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Style Options</div>
+                  <div className="p-4 bg-storm-50 dark:bg-storm-900/30 rounded-lg">
+                    <div className="text-2xl font-bold text-accent-600 dark:text-accent-400">5</div>
+                    <div className="text-xs text-storm-500 dark:text-storm-400">Style Options</div>
                   </div>
-                  <div className="p-4 bg-gray-50 dark:bg-gray-900 rounded-lg">
-                    <div className="text-2xl font-bold text-green-600 dark:text-green-400">Local</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">LLM Processing</div>
+                  <div className="p-4 bg-storm-50 dark:bg-storm-900/30 rounded-lg">
+                    <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">Local</div>
+                    <div className="text-xs text-storm-500 dark:text-storm-400">LLM Processing</div>
                   </div>
                 </div>
               </div>
@@ -338,10 +408,12 @@ export default function HomePage() {
         </div>
       </main>
 
-      <footer className="border-t border-gray-200 dark:border-gray-800 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm mt-12">
+      <footer className="border-t border-storm-200 dark:border-storm-800 bg-white/80 dark:bg-storm-950/80 backdrop-blur-sm mt-12">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            AI Humanizer / NLP Naturalization System — Research Tool · Not an AI Detector ·
+          <p className="text-xs text-storm-500 dark:text-storm-400 text-center">
+            AI Humanizer / NLP Naturalization System — Research Tool ·
+            <span className="mx-2">·</span>
+            Not an AI Detector ·
             <span className="mx-2">·</span>
             Naturalness Score is a heuristic metric ·
             <span className="mx-2">·</span>

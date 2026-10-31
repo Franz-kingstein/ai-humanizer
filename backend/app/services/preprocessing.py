@@ -56,8 +56,10 @@ def extract_dates(text: str) -> List[str]:
 
 
 def extract_urls(text: str) -> List[str]:
-    """Extract all URLs from text."""
-    return URL_PATTERN.findall(text)
+    """Extract all URLs from text (trailing sentence punctuation stripped)."""
+    urls = URL_PATTERN.findall(text)
+    # Strip trailing punctuation that belongs to the sentence, not the URL.
+    return [u.rstrip(".,;:!?)\"'") for u in urls]
 
 
 def normalize_number(num: str) -> str:

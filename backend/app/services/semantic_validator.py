@@ -72,6 +72,12 @@ class SemanticValidator:
         return similarity, is_valid, warning
 
 
+_validator: Optional[SemanticValidator] = None
+
+
 def get_semantic_validator(settings=None) -> SemanticValidator:
-    """Factory function to get semantic validator."""
-    return SemanticValidator(settings)
+    """Factory returning a cached semantic validator singleton."""
+    global _validator
+    if _validator is None:
+        _validator = SemanticValidator(settings)
+    return _validator

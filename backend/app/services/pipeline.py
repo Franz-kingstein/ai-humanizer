@@ -20,6 +20,19 @@ from app.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+def _dedupe_warnings(warnings: list) -> list:
+    """Remove duplicate warnings (same type + message), preserving order."""
+    seen = set()
+    unique = []
+    for w in warnings:
+        key = (w.type, w.message)
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append(w)
+    return unique
+
+
 @dataclass
 class PipelineResult:
     """Complete pipeline result."""
@@ -52,7 +65,7 @@ class HumanizationPipeline:
         start_time = time.time()
 
         analysis = self.analyzer.analyze(text)
-        naturalness = calculate_naturalness_score(analysis)
+        naturalness = calculate_naturalness_score(analysis, text)
         processing_time = (time.time() - start_time) * 1000
 
         return analysis, naturalness, processing_time, request_id
@@ -109,7 +122,7 @@ class HumanizationPipeline:
         try:
             # Original analysis
             original_analysis = self.analyzer.analyze(text)
-            naturalness_before = calculate_naturalness_score(original_analysis)
+            naturalness_before = calculate_naturalness_score(original_analysis, text)
 
             # Humanize with retries
             best_result = None
@@ -145,11 +158,14 @@ class HumanizationPipeline:
 
             # Analyze humanized text
             humanized_analysis = self.analyzer.analyze(humanized_text)
-            naturalness_after = calculate_naturalness_score(humanized_analysis)
+            naturalness_after = calculate_naturalness_score(humanized_analysis, humanized_text)
 
-            # Final content preservation check
+            # Final content preservation check.
+            # Retry attempts already appended their own warnings, so drop
+            # duplicates rather than reporting the same issue several times.
             final_preservation = check_content_preservation(text, humanized_text)
             all_warnings.extend(final_preservation.warnings)
+            all_warnings = _dedupe_warnings(all_warnings)
 
             # Metric comparison
             metric_comparison = self._compare_metrics(original_analysis, humanized_analysis, naturalness_before, naturalness_after)
@@ -256,6 +272,32 @@ class HumanizationPipeline:
         }
 
 
+_pipeline: Optional[HumanizationPipeline] = None
+
+
 def get_pipeline(settings=None, nlp=None) -> HumanizationPipeline:
-    """Factory function to get pipeline."""
-    return HumanizationPipeline(settings, nlp)
+    """Factory function returning a process-wide pipeline singleton.
+
+    The pipeline owns the humanizer model and semantic model, so it must be
+    created exactly once and reused across requests. Creating a new instance
+    per request would reload the transformer weights every call.
+    """
+    global _pipeline
+    if _pipeline is None:
+        # Load spaCy here (once) so syntax/passive-voice metrics are populated.
+        if nlp is None:
+            try:
+                import spacy
+                from app.config import get_settings as _gs
+                nlp = spacy.load(_gs().spacy_model)
+            except Exception as e:
+                logger.warning(f"spaCy unavailable in pipeline: {e}")
+                nlp = None
+        _pipeline = HumanizationPipeline(settings, nlp)
+    return _pipeline
+
+
+def reset_pipeline() -> None:
+    """Drop the cached pipeline (used by tests)."""
+    global _pipeline
+    _pipeline = None

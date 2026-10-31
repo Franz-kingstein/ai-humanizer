@@ -3,8 +3,6 @@
 import {
   BarChart,
   Bar,
-  LineChart,
-  Line,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -12,11 +10,6 @@ import {
   Legend,
   ResponsiveContainer,
   Cell,
-  RadialBarChart,
-  RadialBar,
-  PolarGrid,
-  PolarAngleAxis,
-  PolarRadiusAxis,
 } from "recharts"
 import { cn } from "@/lib/utils"
 
@@ -40,7 +33,7 @@ export function SentenceLengthChart({ lengths, className }: SentenceLengthChartP
   const data = Object.entries(bins)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([range, count]) => ({
-      range: `${range}-${Number(range) + binSize - 1}`,
+      range: `${range}–${Number(range) + binSize - 1}`,
       count,
     }))
 
@@ -48,33 +41,34 @@ export function SentenceLengthChart({ lengths, className }: SentenceLengthChartP
     <div className={cn("h-64", className)}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 10, right: 30, left: 0, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-          <XAxis type="number" tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-storm-100)" vertical={false} />
+          <XAxis type="number" tick={{ fontSize: 11, fill: "var(--color-storm-400)" }} axisLine={false} tickLine={false} />
           <YAxis
             type="category"
             dataKey="range"
             width={80}
-            tick={{ fontSize: 11, fill: "#6b7280" }}
+            tick={{ fontSize: 11, fill: "var(--color-storm-400)" }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
+              backgroundColor: "var(--color-storm-900)",
               border: "none",
               borderRadius: "8px",
-              color: "#f9fafb",
+              color: "white",
             }}
+            formatter={(value: any) => [Number(value) ?? 0, "sentences"]}
           />
           <Legend />
           <Bar
             dataKey="count"
-            fill="#3b82f6"
+            fill="var(--color-accent-500)"
             radius={[0, 4, 4, 0]}
             maxBarSize={30}
           >
             {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill="hsl(217, 91%, 60%)" />
+              <Cell key={`cell-${index}`} fill="var(--color-accent-500)" />
             ))}
           </Bar>
         </BarChart>
@@ -102,25 +96,25 @@ export function ComparisonChart({ before, after, labels, className }: Comparison
     <div className={cn("h-72", className)}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 10, right: 30, left: 20, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-storm-100)" />
           <XAxis
             dataKey="metric"
-            tick={{ fontSize: 11, fill: "#6b7280" }}
+            tick={{ fontSize: 11, fill: "var(--color-storm-400)" }}
             axisLine={false}
             tickLine={false}
           />
-          <YAxis tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fontSize: 11, fill: "var(--color-storm-400)" }} axisLine={false} tickLine={false} />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
+              backgroundColor: "var(--color-storm-900)",
               border: "none",
               borderRadius: "8px",
-              color: "#f9fafb",
+              color: "white",
             }}
           />
           <Legend />
-          <Bar dataKey="before" fill="#9ca3af" radius={[4, 4, 0, 0]} name="Before" maxBarSize={25} />
-          <Bar dataKey="after" fill="#3b82f6" radius={[4, 4, 0, 0]} name="After" maxBarSize={25} />
+          <Bar dataKey="before" fill="var(--color-storm-300)" radius={[4, 4, 0, 0]} name="Before" maxBarSize={25} />
+          <Bar dataKey="after" fill="var(--color-accent-500)" radius={[4, 4, 0, 0]} name="After" maxBarSize={25} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -139,33 +133,34 @@ export function RadarChart({ data, className }: RadarChartProps) {
     <div className={cn("h-72", className)}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} layout="vertical" margin={{ top: 20, right: 30, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" vertical={false} />
-          <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "#6b7280" }} axisLine={false} tickLine={false} />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-storm-100)" vertical={false} />
+          <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: "var(--color-storm-400)" }} axisLine={false} tickLine={false} />
           <YAxis
             type="category"
             dataKey="metric"
             width={140}
-            tick={{ fontSize: 11, fill: "#6b7280" }}
+            tick={{ fontSize: 11, fill: "var(--color-storm-400)" }}
             axisLine={false}
             tickLine={false}
           />
           <Tooltip
             contentStyle={{
-              backgroundColor: "#1f2937",
+              backgroundColor: "var(--color-storm-900)",
               border: "none",
               borderRadius: "8px",
-              color: "#f9fafb",
+              color: "white",
             }}
+            formatter={(value: any) => [Number(value) ?? 0, "score"]}
           />
           <Legend />
           <Bar
             dataKey="value"
-            fill="#3b82f6"
+            fill="var(--color-accent-500)"
             radius={[0, 4, 4, 0]}
             maxBarSize={25}
           >
             {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill="hsl(217, 91%, 60%)" />
+              <Cell key={`cell-${index}`} fill="var(--color-accent-500)" />
             ))}
           </Bar>
         </BarChart>

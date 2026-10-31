@@ -11,7 +11,15 @@ interface TextEditorProps {
   readOnly?: boolean
   showStats?: boolean
   className?: string
+  onCopy?: () => void
 }
+
+const CopyIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="9" y="9" width="13" height="13" rx="2" />
+    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+  </svg>
+)
 
 export function TextEditor({
   label,
@@ -21,6 +29,7 @@ export function TextEditor({
   readOnly = false,
   showStats = true,
   className,
+  onCopy,
 }: TextEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [height, setHeight] = useState(200)
@@ -42,10 +51,24 @@ export function TextEditor({
   const sentenceCount = value.split(/[.!?]+/).filter(s => s.trim().length > 0).length
 
   return (
-    <div className={cn("flex flex-col", className)}>
-      <label className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-        {label}
-      </label>
+    <div className="flex flex-col">
+      <div className="flex items-center justify-between mb-2">
+        <label className="text-sm font-medium text-storm-700 dark:text-storm-200">
+          {label}
+        </label>
+        {onCopy && (
+          <button
+            onClick={onCopy}
+            className="p-1.5 text-storm-400 hover:text-storm-600 dark:hover:text-storm-300 transition-colors rounded-md"
+            aria-label="Copy to clipboard"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="9" width="13" height="13" rx="2" />
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+            </svg>
+          </button>
+        )}
+      </div>
       <div className="relative">
         <textarea
           ref={textareaRef}
@@ -54,22 +77,14 @@ export function TextEditor({
           placeholder={placeholder}
           readOnly={readOnly}
           rows={8}
-          className={cn(
-            "w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg",
-            "bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100",
-            "placeholder-gray-400 dark:placeholder-gray-500",
-            "focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent",
-            "resize-y min-h-[200px] font-mono text-sm leading-relaxed",
-            readOnly && "bg-gray-50 dark:bg-gray-900/50 cursor-not-allowed",
-            "transition-all duration-200"
-          )}
+          className={`input textarea transition-all duration-200 ${readOnly ? "bg-storm-50 dark:bg-storm-900/30 cursor-not-allowed" : ""}`}
           style={{ height: `${height}px` }}
         />
         {showStats && (
-          <div className="absolute bottom-2 right-2 flex gap-4 text-xs text-gray-500 dark:text-gray-400 bg-white/80 dark:bg-gray-800/80 px-2 py-1 rounded">
-            <span>{wordCount} words</span>
-            <span>{charCount} chars</span>
-            <span>{sentenceCount} sentences</span>
+          <div className="absolute bottom-2 right-2 flex gap-3 text-xs text-storm-400 dark:text-storm-500 bg-white/90 dark:bg-storm-900/90 px-2 py-1 rounded border border-storm-100 dark:border-storm-800">
+            <span>{wordCount.toLocaleString()} words</span>
+            <span>{charCount.toLocaleString()} chars</span>
+            <span>{sentenceCount.toLocaleString()} sent.</span>
           </div>
         )}
       </div>

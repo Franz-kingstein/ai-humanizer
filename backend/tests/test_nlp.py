@@ -331,5 +331,92 @@ class TestFullAnalysis:
         assert result.punctuation_distribution.total_punctuation > 0
 
 
+class TestSemanticCoherence:
+    """Tests for the intra-text semantic coherence metric."""
+
+    def test_coherent_text_scores_higher(self):
+        from app.services.metrics import compute_semantic_coherence
+        coherent = (
+            "The research team studied the effects of sleep on memory. "
+            "The memory study involved forty participants. "
+            "These participants completed memory tasks each morning. "
+            "The morning tasks measured recall accuracy."
+        )
+        score = compute_semantic_coherence(coherent)
+        assert 0.0 <= score <= 100.0
+        assert score > 50.0
+
+    def test_disjoint_text_scores_lower(self):
+        from app.services.metrics import compute_semantic_coherence
+        coherent = (
+            "The research team studied the effects of sleep on memory. "
+            "The memory study involved forty participants. "
+            "These participants completed memory tasks each morning."
+        )
+        disjoint = (
+            "The research team studied the effects of sleep on memory. "
+            "Bananas grow in tropical climates. "
+            "Quantum entanglement defies classical intuition."
+        )
+        assert compute_semantic_coherence(coherent) > compute_semantic_coherence(disjoint)
+
+    def test_short_text_neutral(self):
+        from app.services.metrics import compute_semantic_coherence
+        assert compute_semantic_coherence("One single sentence.") == 50.0
+
+    def test_empty_text_neutral(self):
+        from app.services.metrics import compute_semantic_coherence
+        assert compute_semantic_coherence("") == 50.0
+
+    def test_naturalness_score_is_deterministic(self):
+        from app.services.analyzer import TextAnalyzer
+        from app.services.metrics import calculate_naturalness_score
+        try:
+            nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            pytest.skip("spaCy model not installed")
+        analyzer = TextAnalyzer(nlp)
+        analysis = analyzer.analyze(LONG_TEXT)
+        first = calculate_naturalness_score(analysis, LONG_TEXT)
+        second = calculate_naturalness_score(analysis, LONG_TEXT)
+        assert first.score == second.score
+        assert 0.0 <= first.score <= 100.0
+        # No component may be a bare constant placeholder
+        assert len(set(first.components.values())) > 1
+
+
+class TestReadabilityRobustness:
+    """Readability must survive numbers, URLs and hyphenated words."""
+
+    def test_plain_text(self):
+        from app.nlp.readability import calculate_readability
+        m = calculate_readability(
+            "The cat sat on the mat. The dog ran to the park. Birds sang in the tree."
+        )
+        assert m.flesch_reading_ease is not None
+        assert m.flesch_kincaid_grade is not None
+
+    def test_text_with_numbers_and_percentages(self):
+        from app.nlp.readability import calculate_readability
+        m = calculate_readability(
+            "The accuracy reached 94.7% in 2023 and the total was 1,250 units."
+        )
+        assert m.flesch_reading_ease is not None, "numbers must not nullify Flesch"
+
+    def test_text_with_url(self):
+        from app.nlp.readability import calculate_readability
+        m = calculate_readability(
+            "See https://example.com for details about the methodology."
+        )
+        assert m.flesch_reading_ease is not None, "URLs must not nullify Flesch"
+
+    def test_text_with_hyphenated_words(self):
+        from app.nlp.readability import calculate_readability
+        m = calculate_readability(
+            "This fast-changing environment requires a data-driven approach."
+        )
+        assert m.flesch_reading_ease is not None, "hyphens must not nullify Flesch"
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
